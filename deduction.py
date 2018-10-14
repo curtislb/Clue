@@ -8,9 +8,8 @@ current state of the game.
 
 __author__ = 'Curtis Belmonte'
 
-from collections import Counter
-from operator import itemgetter
-from typing import Counter as CounterT, Dict, List, Optional, Set
+from collections import defaultdict
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 import util
 from pieces import Card
@@ -30,6 +29,7 @@ class Ledger(object):
         own_cards: List[Card]
     ) -> None:
         self._players = all_players
+        self._hand_size = len(own_cards)
         self._sheet: List[List[Set[int]]] = [
             [set() for _ in all_players] for _ in Card.__members__
         ]
@@ -167,36 +167,49 @@ class Ledger(object):
         pass
 
 
-class SuggestionCounter(object):
-    """Counter that tracks the number of times players have suggested cards."""
+class SuggestionTracker(object):
+    """Keeps track of suggestions that are made and disproved by players."""
+
+    # Type aliases for suggestion data stored in tracker
+    CardInfo = Tuple[int, Set[str]]
+    PlayerInfo = DefaultDict[Card, CardInfo]
 
     def __init__(self, all_players: List[str]) -> None:
-        self._suggestions: Dict[str, CounterT[Card]] = {
-            player: Counter() for player in all_players
+        self._suggestions: Dict[str, 'SuggestionTracker.PlayerInfo'] = {
+            player: defaultdict(lambda: (0, set())) for player in all_players
         }
 
     def __repr__(self) -> str:
         lines = ['Suggestions:']
 
         # Show card counts for each player in descending order
-        for player, counts in self._suggestions.items():
-            if counts:
+        for player, info in self._suggestions.items():
+            if info:
                 lines.append('  {}:'.format(player))
-                sorted_counts = sorted(
-                    counts.items(),
-                    key=itemgetter(1),
+                sorted_info: List[
+                    Tuple[Card, 'SuggestionTracker.CardInfo']
+                ] = sorted(
+                    info.items(),
+                    key=lambda item: (item[1][0], -item[0]),
                     reverse=True
                 )
-                for card, count in sorted_counts:
-                    lines.append('    {}: {}'.format(card.name, count))
+                for card, card_info in sorted_info:
+                    count, showing_players = card_info
+                    lines.append('    {:13s} {} ({})'.format(
+                        card.name + ':',
+                        count,
+                        ', '.join(sorted(showing_players))
+                    ))
 
         return '\n'.join(lines)
 
-    def add_suggestion(self, player: str, cards: List[Card]) -> None:
+    def add(self, player: str, cards: List[Card], showing_player: str) -> None:
         """Updates player/card counts after a suggestion has been made."""
         player_name = self._get_player_name(player)
         for card in cards:
-            self._suggestions[player_name][card] += 1
+            count, showing_players = self._suggestions[player_name][card]
+            showing_players.add(self._get_player_name(showing_player))
+            self._suggestions[player_name][card] = (count + 1, showing_players)
 
     def _get_player_name(self, player_prefix: str) -> str:
         """Finds the numeric index for a player matching the given prefix."""

@@ -5,6 +5,8 @@
 Classes representing standard pieces of the Clue board game set.
 """
 
+__author__ = 'Curtis Belmonte'
+
 from enum import IntEnum
 
 import util
@@ -12,24 +14,18 @@ import util
 
 class Card(IntEnum):
     """Game card that either is held by a player or is part of the solution."""
-
-    # Suspects
     MUSTARD = 0
     PLUM = 1
     GREEN = 2
     PEACOCK = 3
     SCARLETT = 4
     WHITE = 5
-
-    # Weapons
     KNIFE = 6
     CANDLESTICK = 7
     REVOLVER = 8
     PIPE = 9
     ROPE = 10
     WRENCH = 11
-
-    # Rooms
     HALL = 12
     LOUNGE = 13
     DINING = 14
@@ -47,3 +43,37 @@ class Card(IntEnum):
             if util.is_prefix_match(prefix, name):
                 return card
         raise KeyError('No card with prefix: ' + prefix)
+
+
+# Cards representing murder suspects
+SUSPECTS = (
+    Card.MUSTARD,
+    Card.PLUM,
+    Card.GREEN,
+    Card.PEACOCK,
+    Card.SCARLETT,
+    Card.WHITE,
+)
+
+# Cards representing possible murder weapons
+WEAPONS = (
+    Card.KNIFE,
+    Card.CANDLESTICK,
+    Card.REVOLVER,
+    Card.PIPE,
+    Card.ROPE,
+    Card.WRENCH,
+)
+
+# Cards representing possible murder locations
+ROOMS = (
+    Card.HALL,
+    Card.LOUNGE,
+    Card.DINING,
+    Card.KITCHEN,
+    Card.BALLROOM,
+    Card.CONSERVATORY,
+    Card.BILLIARD,
+    Card.LIBRARY,
+    Card.STUDY,
+)
