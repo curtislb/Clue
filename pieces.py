@@ -9,7 +9,7 @@ __author__ = 'Curtis Belmonte'
 
 from enum import IntEnum
 
-import util
+import prefix
 
 
 class Card(IntEnum):
@@ -37,12 +37,12 @@ class Card(IntEnum):
     STUDY = 20
 
     @classmethod
-    def parse(cls, prefix: str) -> 'Card':
+    def parse(cls, card_prefix: str) -> 'Card':
         """Finds a card whose name matches the given prefix."""
         for name, card in cls.__members__.items():
-            if util.is_prefix_match(prefix, name):
+            if prefix.is_match(card_prefix, name):
                 return card
-        raise KeyError('No card with prefix: ' + prefix)
+        raise KeyError('No card with prefix: ' + card_prefix)
 
 
 # Cards representing murder suspects

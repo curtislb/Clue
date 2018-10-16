@@ -9,8 +9,9 @@ cards held by all players as suggestions/accusations are made and disproved.
 __author__ = 'Curtis Belmonte'
 
 import traceback
-from typing import Optional
+from typing import List, Optional
 
+import prefix
 from ledger import Ledger
 from pieces import Card
 from trackers import ShownCardTracker, SuggestionTracker
@@ -27,18 +28,15 @@ def main() -> None:
     # Set up the ledger and global suggestion counts
     all_players = [player] + opponents
     ledger = Ledger(all_players, player, own_cards)
-    shown_cards = ShownCardTracker(opponents, own_cards)
+    shown_cards = ShownCardTracker(opponents)
     suggestions = SuggestionTracker(all_players)
 
     # Main game loop
     while True:
         # Display the current game info
-        print(ledger)
-        print()
-        print(shown_cards)
-        print()
-        print(suggestions)
-        print()
+        for info in (ledger, shown_cards, suggestions):
+            print(info)
+            print()
 
         # Check if we have a unique solution
         solution = ledger.solve()
@@ -48,14 +46,16 @@ def main() -> None:
 
         # noinspection PyBroadException
         try:
-            process_input(player, ledger, shown_cards, suggestions)
+            process_input(player, all_players, ledger, shown_cards, suggestions)
         except Exception:
-            print('Whoops! Something went wrong:')
+            print()
+            print('Whoops! Something went wrong...')
             traceback.print_exc()
 
 
 def process_input(
     player: str,
+    all_players: List[str],
     ledger: Ledger,
     shown_cards: ShownCardTracker,
     suggestions: SuggestionTracker
@@ -69,6 +69,14 @@ def process_input(
     passing_players = input('Enter players passing: ').strip().split()
     showing_player = input('Enter player showing: ').strip()
 
+    # Map prefixes to actual players/cards
+    suggesting_player = prefix.find_match(suggesting_player, all_players)
+    suggested_cards = [Card.parse(name) for name in suggested_card_names]
+    passing_players = [
+        prefix.find_match(name, all_players) for name in passing_players
+    ]
+    showing_player = prefix.find_match(showing_player, all_players)
+
     # Handle cases where user is directly involved in suggestion
     shown_card: Optional[Card] = None
     if player in (suggesting_player, showing_player):
@@ -77,7 +85,6 @@ def process_input(
             shown_cards.update(suggesting_player, shown_card)
 
     # Update ledger and suggestion tracker
-    suggested_cards = [Card.parse(name) for name in suggested_card_names]
     ledger.update(suggested_cards, passing_players, showing_player, shown_card)
     suggestions.update(suggesting_player, suggested_cards, showing_player)
 

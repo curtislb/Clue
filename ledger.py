@@ -10,7 +10,6 @@ __author__ = 'Curtis Belmonte'
 
 from typing import Iterable, List, Optional, Set, Tuple
 
-import util
 from pieces import Card, ROOMS, SUSPECTS, WEAPONS
 
 
@@ -90,7 +89,7 @@ class Ledger(object):
         # Update ledger based on showing player and/or shown card
         if shown_card is None:
             self._mark_other_shown(cards, showing_player)
-        elif showing_player != self._player:
+        elif not showing_player == self._player:
             self._mark_player_shown(shown_card, showing_player)
 
         # Make any deductions based on new info
@@ -149,12 +148,12 @@ class Ledger(object):
         player_index = self._get_player_index(showing_player)
         self._sheet[shown_card][player_index] = self.YES
 
-    def _get_player_index(self, player_prefix: str) -> int:
-        """Finds the numeric index for a player matching the given prefix."""
+    def _get_player_index(self, player: str) -> int:
+        """Finds the numeric index for a player with the given name."""
         for i, value in enumerate(self._all_players):
-            if util.is_prefix_match(player_prefix, value):
+            if player == value:
                 return i
-        raise ValueError('No player with prefix: ' + player_prefix)
+        raise ValueError('No player with name: ' + player)
 
     def _get_disproof_ids(self, player_index: int) -> Set[int]:
         """Gets the IDs of all unresolved suggestions disproved by a player."""
