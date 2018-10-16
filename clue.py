@@ -9,9 +9,11 @@ cards held by all players as suggestions/accusations are made and disproved.
 __author__ = 'Curtis Belmonte'
 
 import traceback
+from typing import Optional
 
-from deduction import Ledger, SuggestionTracker
+from ledger import Ledger
 from pieces import Card
+from trackers import ShownCardTracker, SuggestionTracker
 
 
 def main() -> None:
@@ -25,12 +27,15 @@ def main() -> None:
     # Set up the ledger and global suggestion counts
     all_players = [player] + opponents
     ledger = Ledger(all_players, player, own_cards)
+    shown_cards = ShownCardTracker(opponents, own_cards)
     suggestions = SuggestionTracker(all_players)
 
     # Main game loop
     while True:
         # Display the current game info
         print(ledger)
+        print()
+        print(shown_cards)
         print()
         print(suggestions)
         print()
@@ -43,7 +48,7 @@ def main() -> None:
 
         # noinspection PyBroadException
         try:
-            process_input(player, ledger, suggestions)
+            process_input(player, ledger, shown_cards, suggestions)
         except Exception:
             print('Whoops! Something went wrong:')
             traceback.print_exc()
@@ -52,21 +57,29 @@ def main() -> None:
 def process_input(
     player: str,
     ledger: Ledger,
+    shown_cards: ShownCardTracker,
     suggestions: SuggestionTracker
 ) -> None:
     """Updates the current known game state based on user input."""
 
     # Prompt user to enter relevant info for each suggestion
     suggesting_player, *suggested_card_names = (
-        input('Enter suggestion (player first): ').strip().split()
+        input('Enter suggestion: ').strip().split()
     )
     passing_players = input('Enter players passing: ').strip().split()
     showing_player = input('Enter player showing: ').strip()
 
-    # Update ledger and suggestion info
+    # Handle cases where user is directly involved in suggestion
+    shown_card: Optional[Card] = None
+    if player in (suggesting_player, showing_player):
+        shown_card = Card.parse(input('Enter shown card: ').strip())
+        if player == showing_player:
+            shown_cards.update(suggesting_player, shown_card)
+
+    # Update ledger and suggestion tracker
     suggested_cards = [Card.parse(name) for name in suggested_card_names]
-    ledger.add_suggestion(suggested_cards, passing_players, showing_player)
-    suggestions.add(suggesting_player, suggested_cards, showing_player)
+    ledger.update(suggested_cards, passing_players, showing_player, shown_card)
+    suggestions.update(suggesting_player, suggested_cards, showing_player)
 
 
 if __name__ == '__main__':
