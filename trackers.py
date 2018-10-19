@@ -8,7 +8,7 @@ Convenience classes for keeping track of the current state of the game.
 __author__ = 'Curtis Belmonte'
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Set, Tuple
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from pieces import Card
 
@@ -79,10 +79,11 @@ class SuggestionTracker(object):
         self,
         player: str,
         cards: List[Card],
-        showing_player: str
+        showing_player: Optional[str]
     ) -> None:
         """Updates player/card counts after a suggestion has been made."""
         for card in cards:
             count, showing_players = self._suggestions[player][card]
-            showing_players.add(showing_player)
+            if showing_player is not None:
+                showing_players.add(showing_player)
             self._suggestions[player][card] = (count + 1, showing_players)

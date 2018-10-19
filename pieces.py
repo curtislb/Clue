@@ -8,6 +8,7 @@ Classes representing standard pieces of the Clue board game set.
 __author__ = 'Curtis Belmonte'
 
 from enum import IntEnum
+from typing import Sequence
 
 import prefix
 
@@ -46,7 +47,7 @@ class Card(IntEnum):
 
 
 # Cards representing murder suspects
-SUSPECTS = (
+SUSPECTS: Sequence[Card] = (
     Card.MUSTARD,
     Card.PLUM,
     Card.GREEN,
@@ -56,7 +57,7 @@ SUSPECTS = (
 )
 
 # Cards representing possible murder weapons
-WEAPONS = (
+WEAPONS: Sequence[Card] = (
     Card.KNIFE,
     Card.CANDLESTICK,
     Card.REVOLVER,
@@ -66,7 +67,7 @@ WEAPONS = (
 )
 
 # Cards representing possible murder locations
-ROOMS = (
+ROOMS: Sequence[Card] = (
     Card.HALL,
     Card.LOUNGE,
     Card.DINING,

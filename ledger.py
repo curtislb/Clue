@@ -8,7 +8,9 @@ that players hold and, by extension, the cards that make up the solution.
 
 __author__ = 'Curtis Belmonte'
 
-from typing import Iterable, List, Optional, Set, Tuple
+import itertools
+from collections import defaultdict
+from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
 
 from pieces import Card, ROOMS, SUSPECTS, WEAPONS
 
@@ -21,10 +23,10 @@ class Ledger(object):
     NO = {-2}   # player doesn't have card
 
     def __init__(
-            self,
-            all_players: List[str],
-            player: str,
-            own_cards: List[Card]
+        self,
+        all_players: List[str],
+        player: str,
+        own_cards: List[Card]
     ) -> None:
         self._all_players = all_players
         self._player = player
@@ -66,17 +68,21 @@ class Ledger(object):
         weapons = self._find_possible_cards(WEAPONS)
         rooms = self._find_possible_cards(ROOMS)
         if len(suspects) == 1 and len(weapons) == 1 and len(rooms) == 1:
-            solution = (suspects[0], weapons[0], rooms[0])
+            solution: Optional[Tuple[Card, Card, Card]] = (
+                suspects[0],
+                weapons[0],
+                rooms[0],
+            )
         else:
             solution = None
         return solution
 
     def update(
-            self,
-            cards: List[Card],
-            passing_players: List[str],
-            showing_player: str,
-            shown_card: Optional[Card]
+        self,
+        cards: List[Card],
+        passing_players: List[str],
+        showing_player: Optional[str],
+        shown_card: Optional[Card]
     ) -> None:
         """Updates the ledger after a suggestion has been made and disproved."""
 
@@ -87,10 +93,11 @@ class Ledger(object):
                 self._sheet[card][player_index] = self.NO
 
         # Update ledger based on showing player and/or shown card
-        if shown_card is None:
-            self._mark_other_shown(cards, showing_player)
-        elif not showing_player == self._player:
-            self._mark_player_shown(shown_card, showing_player)
+        if showing_player is not None:
+            if shown_card is None:
+                self._mark_other_shown(cards, showing_player)
+            elif not showing_player == self._player:
+                self._mark_player_shown(shown_card, showing_player)
 
         # Make any deductions based on new info
         self._simplify()
@@ -106,9 +113,35 @@ class Ledger(object):
             entry_str = ' '.join([str(n) for n in entry])
         return '{:13s}'.format(entry_str)
 
+    def _fill_column(self, col: int, value: Set[int]) -> bool:
+        """Fills all unknown entries in the given column with the given value.
+
+        Any entry other than YES or NO is considered "unknown". Returns True if
+        any entries in the column were reassigned, or False otherwise.
+        """
+        did_change = False
+        for i in range(len(self._sheet)):
+            if self._sheet[i][col] not in (self.YES, self.NO):
+                self._sheet[i][col] = value
+                did_change = True
+        return did_change
+
+    def _fill_row(self, row: int, value: Set[int]) -> bool:
+        """Fills all unknown entries in the given row with the given value.
+
+        Any entry other than YES or NO is considered "unknown". Returns True if
+        any entries in the row were reassigned, or False otherwise.
+        """
+        did_change = False
+        for j in range(len(self._all_players)):
+            if self._sheet[row][j] not in (self.YES, self.NO):
+                self._sheet[row][j] = value
+                did_change = True
+        return did_change
+
     def _find_possible_cards(self, cards: Iterable[Card]) -> List[Card]:
         """Returns all of the given cards that could be part of the solution."""
-        possible_cards = []
+        possible_cards: List[Card] = []
         for card in cards:
             if self._is_solution(card):
                 possible_cards = [card]
@@ -155,18 +188,26 @@ class Ledger(object):
                 return i
         raise ValueError('No player with name: ' + player)
 
-    def _get_disproof_ids(self, player_index: int) -> Set[int]:
-        """Gets the IDs of all unresolved suggestions disproved by a player."""
-        current_ids: Set[int] = set()
+    def _get_disproof_ids(
+        self,
+        player_index: int
+    ) -> DefaultDict[int, Set[Card]]:
+        """Gets the IDs of all unresolved suggestions disproved by a player.
+
+        Returns a dict mapping each unique ID to the set of cards that it is
+        still associated with for the given player.
+        """
+        disproof_ids: DefaultDict[int, Set[Card]] = defaultdict(set)
         for card in Card.__members__.values():
             entry = self._sheet[card][player_index]
             if entry not in (self.YES, self.NO):
-                current_ids |= entry
-        return current_ids
+                for disproof_id in entry:
+                    disproof_ids[disproof_id].add(card)
+        return disproof_ids
 
     def _new_disproof_id(self, player_index: int) -> int:
         """Returns an ID representing a new suggestion disproved by a player."""
-        current_ids = self._get_disproof_ids(player_index)
+        current_ids = set(self._get_disproof_ids(player_index).keys())
         new_id = 1
         while new_id in current_ids:
             new_id += 1
@@ -186,7 +227,7 @@ class Ledger(object):
             ))
 
     def _simplify_known_holders(self) -> bool:
-        """Simplifies ledger by applying the "single holder" rule for each card.
+        """Simplifies ledger by applying a "single holder" rule for each card.
 
         Specifically, for each card that we have marked as being held by a
         player, marks all other players as not holding that card.
@@ -204,7 +245,7 @@ class Ledger(object):
         return did_change
 
     def _simplify_max_no_counts(self) -> bool:
-        """Simplifies ledger by applying the "max NO" rule for each player.
+        """Simplifies ledger by applying a "max NO count" rule for each player.
 
         Specifically, for each player that we have marked as not having a number
         of cards equal to total_cards - (hand_size - yes_count), marks the
@@ -233,7 +274,7 @@ class Ledger(object):
         return did_change
 
     def _simplify_max_yes_counts(self) -> bool:
-        """Simplifies ledger by applying the "max YES" rule for each player.
+        """Simplifies ledger by applying a "max YES count" rule for each player.
 
         Specifically, for each player that we have marked as having a number of
         cards equal to hand_size, marks the player as not having all of the
@@ -244,11 +285,10 @@ class Ledger(object):
         """
 
         did_change = False
-        num_cards = len(self._sheet)
         for j in range(len(self._all_players)):
             # Count YES entries in player's column
             yes_count = 0
-            for i in range(num_cards):
+            for i in range(len(self._sheet)):
                 if self._sheet[i][j] == self.YES:
                     yes_count += 1
 
@@ -259,36 +299,122 @@ class Ledger(object):
         return did_change
 
     def _simplify_solved_categories(self) -> bool:
-        pass
+        """Simplifies ledger by applying a "solved category" rule for all cards.
+
+        Specifically, if we know which card in a category (suspects, weapons,
+        or rooms) is part of the solution, and any of the other cards in that
+        category can only be held by one player, mark those entries as YES.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+        did_change = False
+        for category in (SUSPECTS, WEAPONS, ROOMS):
+            did_change = self._simplify_solved_category(category) or did_change
+        return did_change
+
+    def _simplify_solved_category(self, category: Iterable[Card]) -> bool:
+        """Simplifies ledger by applying a "solved category" rule for category.
+
+        Specifically, if we know a card in category is part of the solution, and
+        any of the other cards in category can only be held by one player, mark
+        the corresponding entries as YES.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+
+        did_change = False
+
+        # Look for a card that is a known part of the solution
+        solution_card: Optional[Card] = None
+        for card in category:
+            if self._is_solution(card):
+                solution_card = card
+                break
+
+        if solution_card is not None:
+            for card in category:
+                # No need to simplify row with solution card
+                if card == solution_card:
+                    continue
+
+                # Find index of only possible owner, if any
+                owner_index: Optional[int] = None
+                for j in range(len(self._all_players)):
+                    if self._sheet[card][j] == self.YES:
+                        # Card already has known owner
+                        owner_index = None
+                        break
+                    elif self._sheet[card][j] != self.NO:
+                        if owner_index is None:
+                            owner_index = j
+                        else:
+                            owner_index = None
+                            break
+
+                # Mark only possible owner as holding card
+                if owner_index is not None:
+                    self._sheet[card][owner_index] = self.YES
+                    did_change = True
+
+        return did_change
 
     def _simplify_single_shown_cards(self) -> bool:
-        pass
+        """Simplifies ledger by applying a "1 shown card" rule for each player.
+
+        Specifically, if there is only one possible card left for a suggestion
+        that a player has disproved, then mark the player as having that card.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+        did_change = False
+        for player_index in range(len(self._all_players)):
+            disproof_ids = self._get_disproof_ids(player_index)
+            for cards in disproof_ids.values():
+                if len(cards) == 1:
+                    self._sheet[list(cards)[0]][player_index] = self.YES
+                    did_change = True
+        return did_change
 
     def _simplify_sufficient_shown_cards(self) -> bool:
-        pass
+        """Simplifies ledger by applying a "sufficient shown cards" rule.
 
-    def _fill_column(self, col: int, value: Set[int]) -> bool:
-        """Fills all unknown entries in the given column with the given value.
+        Specifically, for each player that has a sufficient spread of possible
+        shown cards from suggestions they have disproved to account for all
+        cards in their hand, mark all other cards as NO.
 
-        Any entry other than YES or NO is considered "unknown". Returns True
-        if any entries in the column were reassigned, or False otherwise.
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
         """
         did_change = False
+        for player_index in range(len(self._all_players)):
+            if self._has_sufficient_shown_cards(player_index):
+                for i in range(len(self._sheet)):
+                    if not self._sheet[i][player_index]:
+                        self._sheet[i][player_index] = self.NO
+                        did_change = True
+        return did_change
+
+    def _has_sufficient_shown_cards(self, player_index: int) -> bool:
+        """Checks if a player satisfies the "sufficient shown cards" rule."""
+
+        # Count number of cards we already know the player has
+        yes_count = 0
         for i in range(len(self._sheet)):
-            if self._sheet[i][col] not in (self.YES, self.NO):
-                self._sheet[i][col] = value
-                did_change = True
-        return did_change
+            if self._sheet[i][player_index] == self.YES:
+                yes_count += 1
 
-    def _fill_row(self, row: int, value: Set[int]) -> bool:
-        """Fills all unknown entries in the given row with the given value.
+        # Check if shown cards cover their remaining cards
+        is_sufficient = True
+        if yes_count < self._hand_size:
+            possible_seqs: Iterable[Iterable[Card]] = itertools.product(
+                *(self._get_disproof_ids(player_index).values())
+            )
+            for shown_seq in possible_seqs:
+                if len(set(shown_seq)) < self._hand_size - yes_count:
+                    is_sufficient = False
+                    break
 
-        Any entry other than YES or NO is considered "unknown". Returns True
-        if any entries in the row were reassigned, or False otherwise.
-        """
-        did_change = False
-        for j in range(len(self._sheet)):
-            if self._sheet[row][j] not in (self.YES, self.NO):
-                self._sheet[row][j] = value
-                did_change = True
-        return did_change
+        return is_sufficient

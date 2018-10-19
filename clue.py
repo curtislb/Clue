@@ -43,6 +43,7 @@ def main() -> None:
         if solution is not None:
             print('*** Unique solution found! ***')
             print(', '.join([card.name for card in solution]))
+            print()
 
         # noinspection PyBroadException
         try:
@@ -63,23 +64,29 @@ def process_input(
     """Updates the current known game state based on user input."""
 
     # Prompt user to enter relevant info for each suggestion
-    suggesting_player, *suggested_card_names = (
+    suggesting_prefix, *suggested_card_prefixes = (
         input('Enter suggestion: ').strip().split()
     )
-    passing_players = input('Enter players passing: ').strip().split()
-    showing_player = input('Enter player showing: ').strip()
+    passing_prefixes = input('Enter players passing: ').strip().split()
+    showing_prefix = input('Enter player showing: ').strip()
 
     # Map prefixes to actual players/cards
-    suggesting_player = prefix.find_match(suggesting_player, all_players)
-    suggested_cards = [Card.parse(name) for name in suggested_card_names]
+    suggesting_player = prefix.find_match(suggesting_prefix, all_players)
+    suggested_cards = [Card.parse(name) for name in suggested_card_prefixes]
     passing_players = [
-        prefix.find_match(name, all_players) for name in passing_players
+        prefix.find_match(name, all_players) for name in passing_prefixes
     ]
-    showing_player = prefix.find_match(showing_player, all_players)
+    showing_player = (
+        None if showing_prefix == '' else
+        prefix.find_match(showing_prefix, all_players)
+    )
 
     # Handle cases where user is directly involved in suggestion
     shown_card: Optional[Card] = None
-    if player in (suggesting_player, showing_player):
+    if (
+        showing_player is not None
+        and player in (suggesting_player, showing_player)
+    ):
         shown_card = Card.parse(input('Enter shown card: ').strip())
         if player == showing_player:
             shown_cards.update(suggesting_player, shown_card)

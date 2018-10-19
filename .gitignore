@@ -1,15 +1,13 @@
 # Specific directories
 /.idea/
-/py/__pycache__/
-/py/.mypy_cache/
-/py/htmlcov/
+__pycache__/
+.mypy_cache/
+htmlcov/
 /venv/
 
 # File patterns
 .coverage
 .project
-*.a
-*.o
-*.pyc
-*.pyo
+*.[ao]
+*.py[co]
 *~
