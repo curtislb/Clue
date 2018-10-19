@@ -21,10 +21,10 @@ class Ledger(object):
     NO = {-2}   # player doesn't have card
 
     def __init__(
-        self,
-        all_players: List[str],
-        player: str,
-        own_cards: List[Card]
+            self,
+            all_players: List[str],
+            player: str,
+            own_cards: List[Card]
     ) -> None:
         self._all_players = all_players
         self._player = player
@@ -174,4 +174,121 @@ class Ledger(object):
 
     def _simplify(self) -> None:
         """Tries to simplify the ledger by making deductions about cards."""
+        did_change = True
+        while did_change:
+            did_change = any((
+                self._simplify_known_holders(),
+                self._simplify_max_no_counts(),
+                self._simplify_max_yes_counts(),
+                self._simplify_solved_categories(),
+                self._simplify_single_shown_cards(),
+                self._simplify_sufficient_shown_cards(),
+            ))
+
+    def _simplify_known_holders(self) -> bool:
+        """Simplifies ledger by applying the "single holder" rule for each card.
+
+        Specifically, for each card that we have marked as being held by a
+        player, marks all other players as not holding that card.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+        did_change = False
+        for i, row in enumerate(self._sheet):
+            for j, entry in enumerate(row):
+                if entry == self.YES:
+                    # Mark NO for all other players in this row
+                    did_change = self._fill_row(i, self.NO) or did_change
+                    break
+        return did_change
+
+    def _simplify_max_no_counts(self) -> bool:
+        """Simplifies ledger by applying the "max NO" rule for each player.
+
+        Specifically, for each player that we have marked as not having a number
+        of cards equal to total_cards - (hand_size - yes_count), marks the
+        player as having all of the remaining cards.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+
+        did_change = False
+        num_cards = len(self._sheet)
+        for j in range(len(self._all_players)):
+            # Count NO and YES entries in player's column
+            no_count = 0
+            yes_count = 0
+            for i in range(num_cards):
+                if self._sheet[i][j] == self.NO:
+                    no_count += 1
+                elif self._sheet[i][j] == self.YES:
+                    yes_count += 1
+
+            # If NO count is max possible, make all other column entries YES
+            if no_count >= num_cards - self._hand_size + yes_count:
+                did_change = self._fill_column(j, self.YES) or did_change
+
+        return did_change
+
+    def _simplify_max_yes_counts(self) -> bool:
+        """Simplifies ledger by applying the "max YES" rule for each player.
+
+        Specifically, for each player that we have marked as having a number of
+        cards equal to hand_size, marks the player as not having all of the
+        remaining cards.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+
+        did_change = False
+        num_cards = len(self._sheet)
+        for j in range(len(self._all_players)):
+            # Count YES entries in player's column
+            yes_count = 0
+            for i in range(num_cards):
+                if self._sheet[i][j] == self.YES:
+                    yes_count += 1
+
+            # If YES count is max possible, make all other column entries NO
+            if yes_count >= self._hand_size:
+                did_change = self._fill_column(j, self.NO) or did_change
+
+        return did_change
+
+    def _simplify_solved_categories(self) -> bool:
         pass
+
+    def _simplify_single_shown_cards(self) -> bool:
+        pass
+
+    def _simplify_sufficient_shown_cards(self) -> bool:
+        pass
+
+    def _fill_column(self, col: int, value: Set[int]) -> bool:
+        """Fills all unknown entries in the given column with the given value.
+
+        Any entry other than YES or NO is considered "unknown". Returns True
+        if any entries in the column were reassigned, or False otherwise.
+        """
+        did_change = False
+        for i in range(len(self._sheet)):
+            if self._sheet[i][col] not in (self.YES, self.NO):
+                self._sheet[i][col] = value
+                did_change = True
+        return did_change
+
+    def _fill_row(self, row: int, value: Set[int]) -> bool:
+        """Fills all unknown entries in the given row with the given value.
+
+        Any entry other than YES or NO is considered "unknown". Returns True
+        if any entries in the row were reassigned, or False otherwise.
+        """
+        did_change = False
+        for j in range(len(self._sheet)):
+            if self._sheet[row][j] not in (self.YES, self.NO):
+                self._sheet[row][j] = value
+                did_change = True
+        return did_change
