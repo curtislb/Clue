@@ -31,7 +31,9 @@ def main() -> None:
     player_count = 1 + len(opponents)
     if (card_count - 3) % player_count != 0:
         for opponent in opponents:
-            hand_size = int(input('Enter hand size for {}: '.format(opponent)))
+            hand_size = int(
+                input('Enter hand size for {}: '.format(opponent)).strip()
+            )
             hand_sizes.append(hand_size)
     else:
         hand_sizes *= player_count
