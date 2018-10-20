@@ -25,12 +25,18 @@ class Ledger(object):
     def __init__(
         self,
         all_players: List[str],
+        hand_sizes: List[int],
         player: str,
         own_cards: List[Card]
     ) -> None:
+
+        # Ensure user-supplied params are logically consistent
+        assert len(all_players) == len(hand_sizes)
+        assert hand_sizes[all_players.index(player)] == len(own_cards)
+
         self._all_players = all_players
         self._player = player
-        self._hand_size = len(own_cards)
+        self._hand_sizes = hand_sizes
         self._sheet: List[List[Set[int]]] = [
             [set() for _ in all_players] for _ in Card.__members__
         ]
@@ -90,7 +96,7 @@ class Ledger(object):
         for player in passing_players:
             for card in cards:
                 player_index = self._get_player_index(player)
-                self._sheet[card][player_index] = self.NO
+                self._mark_no(card, player_index)
 
         # Update ledger based on showing player and/or shown card
         if showing_player is not None:
@@ -113,6 +119,29 @@ class Ledger(object):
             entry_str = ' '.join([str(n) for n in entry])
         return '{:13s}'.format(entry_str)
 
+    def _mark(self, card: Card, player_index: int, value: Set[int]) -> None:
+        """Updates the ledger entry for the given card and player to value."""
+        if value == self.NO:
+            self._mark_no(card, player_index)
+        elif value == self.YES:
+            self._mark_yes(card, player_index)
+        else:
+            self._sheet[card][player_index] = value
+
+    def _mark_no(self, card: Card, player_index: int) -> None:
+        """Updates the ledger entry for the given card and player to NO."""
+        self._sheet[card][player_index] = self.NO
+
+    def _mark_yes(self, card: Card, player_index: int) -> None:
+        """Updates the ledger entry for the given card and player to YES."""
+
+        # Clean up disproved suggestions now that we know player has card
+        disproof_ids = self._sheet[card][player_index]
+        for c in Card.__members__.values():
+            self._sheet[c][player_index] -= disproof_ids
+
+        self._sheet[card][player_index] = self.YES
+
     def _fill_column(self, col: int, value: Set[int]) -> bool:
         """Fills all unknown entries in the given column with the given value.
 
@@ -120,9 +149,9 @@ class Ledger(object):
         any entries in the column were reassigned, or False otherwise.
         """
         did_change = False
-        for i in range(len(self._sheet)):
-            if self._sheet[i][col] not in (self.YES, self.NO):
-                self._sheet[i][col] = value
+        for c in Card.__members__.values():
+            if self._sheet[c][col] not in (self.YES, self.NO):
+                self._mark(c, col, value)
                 did_change = True
         return did_change
 
@@ -133,9 +162,9 @@ class Ledger(object):
         any entries in the row were reassigned, or False otherwise.
         """
         did_change = False
-        for j in range(len(self._all_players)):
-            if self._sheet[row][j] not in (self.YES, self.NO):
-                self._sheet[row][j] = value
+        for p in range(len(self._all_players)):
+            if self._sheet[row][p] not in (self.YES, self.NO):
+                self._mark(Card(row), p, value)
                 did_change = True
         return did_change
 
@@ -179,7 +208,7 @@ class Ledger(object):
     def _mark_player_shown(self, shown_card: Card, showing_player: str) -> None:
         """Updates the ledger after the player's suggestion is disproved."""
         player_index = self._get_player_index(showing_player)
-        self._sheet[shown_card][player_index] = self.YES
+        self._mark_yes(shown_card, player_index)
 
     def _get_player_index(self, player: str) -> int:
         """Finds the numeric index for a player with the given name."""
@@ -188,7 +217,7 @@ class Ledger(object):
                 return i
         raise ValueError('No player with name: ' + player)
 
-    def _get_disproof_ids(
+    def _get_disproof_id_map(
         self,
         player_index: int
     ) -> DefaultDict[int, Set[Card]]:
@@ -197,17 +226,17 @@ class Ledger(object):
         Returns a dict mapping each unique ID to the set of cards that it is
         still associated with for the given player.
         """
-        disproof_ids: DefaultDict[int, Set[Card]] = defaultdict(set)
+        disproof_id_map: DefaultDict[int, Set[Card]] = defaultdict(set)
         for card in Card.__members__.values():
             entry = self._sheet[card][player_index]
             if entry not in (self.YES, self.NO):
                 for disproof_id in entry:
-                    disproof_ids[disproof_id].add(card)
-        return disproof_ids
+                    disproof_id_map[disproof_id].add(card)
+        return disproof_id_map
 
     def _new_disproof_id(self, player_index: int) -> int:
         """Returns an ID representing a new suggestion disproved by a player."""
-        current_ids = set(self._get_disproof_ids(player_index).keys())
+        current_ids = set(self._get_disproof_id_map(player_index).keys())
         new_id = 1
         while new_id in current_ids:
             new_id += 1
@@ -257,19 +286,19 @@ class Ledger(object):
 
         did_change = False
         num_cards = len(self._sheet)
-        for j in range(len(self._all_players)):
+        for p in range(len(self._all_players)):
             # Count NO and YES entries in player's column
             no_count = 0
             yes_count = 0
             for i in range(num_cards):
-                if self._sheet[i][j] == self.NO:
+                if self._sheet[i][p] == self.NO:
                     no_count += 1
-                elif self._sheet[i][j] == self.YES:
+                elif self._sheet[i][p] == self.YES:
                     yes_count += 1
 
             # If NO count is max possible, make all other column entries YES
-            if no_count >= num_cards - self._hand_size + yes_count:
-                did_change = self._fill_column(j, self.YES) or did_change
+            if no_count >= num_cards - self._hand_sizes[p] + yes_count:
+                did_change = self._fill_column(p, self.YES) or did_change
 
         return did_change
 
@@ -285,16 +314,16 @@ class Ledger(object):
         """
 
         did_change = False
-        for j in range(len(self._all_players)):
+        for p in range(len(self._all_players)):
             # Count YES entries in player's column
             yes_count = 0
-            for i in range(len(self._sheet)):
-                if self._sheet[i][j] == self.YES:
+            for c in Card.__members__.values():
+                if self._sheet[c][p] == self.YES:
                     yes_count += 1
 
             # If YES count is max possible, make all other column entries NO
-            if yes_count >= self._hand_size:
-                did_change = self._fill_column(j, self.NO) or did_change
+            if yes_count >= self._hand_sizes[p]:
+                did_change = self._fill_column(p, self.NO) or did_change
 
         return did_change
 
@@ -341,21 +370,21 @@ class Ledger(object):
 
                 # Find index of only possible owner, if any
                 owner_index: Optional[int] = None
-                for j in range(len(self._all_players)):
-                    if self._sheet[card][j] == self.YES:
+                for p in range(len(self._all_players)):
+                    if self._sheet[card][p] == self.YES:
                         # Card already has known owner
                         owner_index = None
                         break
-                    elif self._sheet[card][j] != self.NO:
+                    elif self._sheet[card][p] != self.NO:
                         if owner_index is None:
-                            owner_index = j
+                            owner_index = p
                         else:
                             owner_index = None
                             break
 
                 # Mark only possible owner as holding card
                 if owner_index is not None:
-                    self._sheet[card][owner_index] = self.YES
+                    self._mark_yes(card, owner_index)
                     did_change = True
 
         return did_change
@@ -371,10 +400,10 @@ class Ledger(object):
         """
         did_change = False
         for player_index in range(len(self._all_players)):
-            disproof_ids = self._get_disproof_ids(player_index)
-            for cards in disproof_ids.values():
+            disproof_id_map = self._get_disproof_id_map(player_index)
+            for cards in disproof_id_map.values():
                 if len(cards) == 1:
-                    self._sheet[list(cards)[0]][player_index] = self.YES
+                    self._mark_yes(list(cards)[0], player_index)
                     did_change = True
         return did_change
 
@@ -391,9 +420,9 @@ class Ledger(object):
         did_change = False
         for player_index in range(len(self._all_players)):
             if self._has_sufficient_shown_cards(player_index):
-                for i in range(len(self._sheet)):
-                    if not self._sheet[i][player_index]:
-                        self._sheet[i][player_index] = self.NO
+                for c in Card.__members__.values():
+                    if not self._sheet[c][player_index]:
+                        self._mark_no(c, player_index)
                         did_change = True
         return did_change
 
@@ -402,18 +431,19 @@ class Ledger(object):
 
         # Count number of cards we already know the player has
         yes_count = 0
-        for i in range(len(self._sheet)):
-            if self._sheet[i][player_index] == self.YES:
+        for c in Card.__members__.values():
+            if self._sheet[c][player_index] == self.YES:
                 yes_count += 1
 
         # Check if shown cards cover their remaining cards
         is_sufficient = True
-        if yes_count < self._hand_size:
+        hand_size = self._hand_sizes[player_index]
+        if yes_count < hand_size:
             possible_seqs: Iterable[Iterable[Card]] = itertools.product(
-                *(self._get_disproof_ids(player_index).values())
+                *(self._get_disproof_id_map(player_index).values())
             )
             for shown_seq in possible_seqs:
-                if len(set(shown_seq)) < self._hand_size - yes_count:
+                if len(set(shown_seq)) < hand_size - yes_count:
                     is_sufficient = False
                     break
 

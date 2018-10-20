@@ -14,7 +14,7 @@ from typing import List, Optional
 import prefix
 from ledger import Ledger
 from pieces import Card
-from trackers import ShownCardTracker, SuggestionTracker
+from trackers import ShownCardTracker, SkippedCardTracker, SuggestionTracker
 
 
 def main() -> None:
@@ -25,16 +25,28 @@ def main() -> None:
         Card.parse(s) for s in input('Enter your cards: ').strip().split()
     ]
 
-    # Set up the ledger and global suggestion counts
+    # Prompt for opponents' hand sizes if necessary
+    hand_sizes = [len(own_cards)]
+    card_count = len(Card.__members__)
+    player_count = 1 + len(opponents)
+    if (card_count - 3) % player_count != 0:
+        for opponent in opponents:
+            hand_size = int(input('Enter hand size for {}: '.format(opponent)))
+            hand_sizes.append(hand_size)
+    else:
+        hand_sizes *= player_count
+
+    # Set up the ledger and card/suggestion trackers
     all_players = [player] + opponents
-    ledger = Ledger(all_players, player, own_cards)
+    ledger = Ledger(all_players, hand_sizes, player, own_cards)
     shown_cards = ShownCardTracker(opponents)
+    skipped_cards = SkippedCardTracker()
     suggestions = SuggestionTracker(all_players)
 
     # Main game loop
     while True:
         # Display the current game info
-        for info in (ledger, shown_cards, suggestions):
+        for info in (ledger, shown_cards, skipped_cards, suggestions):
             print(info)
             print()
 

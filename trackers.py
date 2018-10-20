@@ -29,7 +29,7 @@ class ShownCardTracker(object):
             if cards:
                 lines.append('  {}: {}'.format(
                     player,
-                    ', '.join([card.name for card in sorted(cards)])
+                    ', '.join(card.name for card in sorted(cards))
                 ))
 
         return '\n'.join(lines)
@@ -37,6 +37,26 @@ class ShownCardTracker(object):
     def update(self, opponent: str, card: Card) -> None:
         """Updates tracker after an opponent has been shown the given card."""
         self._shown_cards[opponent].add(card)
+
+
+class SkippedCardTracker(object):
+    """Keeps track of cards suggested by others that the user has skipped."""
+
+    def __init__(self) -> None:
+        self._skipped_cards: Set[Card] = set()
+
+    def __repr__(self) -> str:
+        lines = ['Skipped Cards:']
+        if self._skipped_cards:
+            lines.append(
+                '  ' + ', '.join(c.name for c in sorted(self._skipped_cards))
+            )
+        return '\n'.join(lines)
+
+    def update(self, cards: List[Card]) -> None:
+        """Updates tracker after the player has skipped for the given cards."""
+        for card in cards:
+            self._skipped_cards.add(card)
 
 
 class SuggestionTracker(object):
