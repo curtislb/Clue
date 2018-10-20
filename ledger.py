@@ -56,15 +56,18 @@ class Ledger(object):
         header = ' | '.join(
             [' ' * 14] + ['{:13s}'.format(name) for name in self._all_players]
         )
-        divider = '-' * (15 + 16 * len(self._all_players))
-        lines = ['', header, divider]
+        lines = ['', header]
 
         # Add line for each game card, with an entry for each player
-        for i, row in enumerate(self._sheet):
-            row_label = '{:14s}'.format(Card(i).name)
-            lines.append(' | '.join(
-                [row_label] + [self._format_entry(entry) for entry in row]
-            ))
+        divider = '-' * (15 + 16 * len(self._all_players))
+        for category in (SUSPECTS, WEAPONS, ROOMS):
+            lines.append(divider)
+            for card in category:
+                row_label = '{:14s}'.format(card.name)
+                lines.append(' | '.join(
+                    [row_label]
+                    + [self._format_entry(entry) for entry in self._sheet[card]]
+                ))
 
         return '\n'.join(lines)
 
@@ -138,12 +141,15 @@ class Ledger(object):
         # Clean up disproved suggestions now that we know player has card
         disproof_ids = self._sheet[card][player_index]
         for c in Card.__members__.values():
-            self._sheet[c][player_index] -= disproof_ids
+            if c != card:
+                self._sheet[c][player_index] = (
+                    self._sheet[c][player_index] - disproof_ids
+                )
 
         self._sheet[card][player_index] = self.YES
 
     def _fill_column(self, col: int, value: Set[int]) -> bool:
-        """Fills all unknown entries in the given column with the given value.
+        """Fills all unknown entries in the given column with a given value.
 
         Any entry other than YES or NO is considered "unknown". Returns True if
         any entries in the column were reassigned, or False otherwise.
@@ -156,7 +162,7 @@ class Ledger(object):
         return did_change
 
     def _fill_row(self, row: int, value: Set[int]) -> bool:
-        """Fills all unknown entries in the given row with the given value.
+        """Fills all unknown entries in the given row with a given value.
 
         Any entry other than YES or NO is considered "unknown". Returns True if
         any entries in the row were reassigned, or False otherwise.
@@ -224,7 +230,7 @@ class Ledger(object):
         """Gets the IDs of all unresolved suggestions disproved by a player.
 
         Returns a dict mapping each unique ID to the set of cards that it is
-        still associated with for the given player.
+        still associated with for a given player.
         """
         disproof_id_map: DefaultDict[int, Set[Card]] = defaultdict(set)
         for card in Card.__members__.values():
@@ -306,7 +312,7 @@ class Ledger(object):
         """Simplifies ledger by applying a "max YES count" rule for each player.
 
         Specifically, for each player that we have marked as having a number of
-        cards equal to hand_size, marks the player as not having all of the
+        cards equal to hand_size, marks that player as not having all of the
         remaining cards.
 
         Returns True if the ledger changes as a result of applying this rule, or
@@ -393,7 +399,7 @@ class Ledger(object):
         """Simplifies ledger by applying a "1 shown card" rule for each player.
 
         Specifically, if there is only one possible card left for a suggestion
-        that a player has disproved, then mark the player as having that card.
+        that a player has disproved, then mark that player as having the card.
 
         Returns True if the ledger changes as a result of applying this rule, or
         False if the ledger is unchanged.
@@ -429,7 +435,7 @@ class Ledger(object):
     def _has_sufficient_shown_cards(self, player_index: int) -> bool:
         """Checks if a player satisfies the "sufficient shown cards" rule."""
 
-        # Count number of cards we already know the player has
+        # Count number of cards we already know player has
         yes_count = 0
         for c in Card.__members__.values():
             if self._sheet[c][player_index] == self.YES:

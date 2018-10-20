@@ -47,7 +47,7 @@ def main() -> None:
     # Main game loop
     while True:
         # Display the current game info
-        for info in (ledger, shown_cards, skipped_cards, suggestions):
+        for info in (shown_cards, skipped_cards, suggestions, ledger):
             print(info)
             print()
 
@@ -60,7 +60,14 @@ def main() -> None:
 
         # noinspection PyBroadException
         try:
-            process_input(player, all_players, ledger, shown_cards, suggestions)
+            process_input(
+                player,
+                all_players,
+                ledger,
+                shown_cards,
+                skipped_cards,
+                suggestions
+            )
         except Exception:
             print()
             print('Whoops! Something went wrong...')
@@ -72,6 +79,7 @@ def process_input(
     all_players: List[str],
     ledger: Ledger,
     shown_cards: ShownCardTracker,
+    skipped_cards: SkippedCardTracker,
     suggestions: SuggestionTracker
 ) -> None:
     """Updates the current known game state based on user input."""
@@ -104,9 +112,11 @@ def process_input(
         if player == showing_player:
             shown_cards.update(suggesting_player, shown_card)
 
-    # Update ledger and suggestion tracker
+    # Update ledger and suggestion/card trackers
     ledger.update(suggested_cards, passing_players, showing_player, shown_card)
     suggestions.update(suggesting_player, suggested_cards, showing_player)
+    if player in passing_players:
+        skipped_cards.update(suggested_cards)
 
 
 if __name__ == '__main__':
