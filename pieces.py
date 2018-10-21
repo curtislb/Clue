@@ -15,26 +15,26 @@ import prefix
 
 class Card(IntEnum):
     """Game card that either is held by a player or is part of the solution."""
-    MUSTARD = 0
-    PLUM = 1
-    GREEN = 2
+    GREEN = 0
+    MUSTARD = 1
+    ORCHID = 2
     PEACOCK = 3
-    SCARLETT = 4
-    WHITE = 5
-    KNIFE = 6
-    CANDLESTICK = 7
-    REVOLVER = 8
-    PIPE = 9
+    PLUM = 4
+    SCARLETT = 5
+    CANDLESTICK = 6
+    DAGGER = 7
+    PIPE = 8
+    REVOLVER = 9
     ROPE = 10
     WRENCH = 11
-    HALL = 12
-    LOUNGE = 13
-    DINING = 14
-    KITCHEN = 15
-    BALLROOM = 16
-    CONSERVATORY = 17
-    BILLIARD = 18
-    LIBRARY = 19
+    BALLROOM = 12
+    BILLIARD = 13
+    CONSERVATORY = 14
+    DINING = 15
+    HALL = 16
+    KITCHEN = 17
+    LIBRARY = 18
+    LOUNGE = 19
     STUDY = 20
 
     @classmethod
@@ -48,33 +48,33 @@ class Card(IntEnum):
 
 # Cards representing murder suspects
 SUSPECTS: Sequence[Card] = (
-    Card.MUSTARD,
-    Card.PLUM,
     Card.GREEN,
+    Card.MUSTARD,
+    Card.ORCHID,
     Card.PEACOCK,
+    Card.PLUM,
     Card.SCARLETT,
-    Card.WHITE,
 )
 
 # Cards representing possible murder weapons
 WEAPONS: Sequence[Card] = (
-    Card.KNIFE,
     Card.CANDLESTICK,
-    Card.REVOLVER,
+    Card.DAGGER,
     Card.PIPE,
+    Card.REVOLVER,
     Card.ROPE,
     Card.WRENCH,
 )
 
 # Cards representing possible murder locations
 ROOMS: Sequence[Card] = (
-    Card.HALL,
-    Card.LOUNGE,
-    Card.DINING,
-    Card.KITCHEN,
     Card.BALLROOM,
-    Card.CONSERVATORY,
     Card.BILLIARD,
+    Card.CONSERVATORY,
+    Card.DINING,
+    Card.HALL,
+    Card.KITCHEN,
     Card.LIBRARY,
+    Card.LOUNGE,
     Card.STUDY,
 )

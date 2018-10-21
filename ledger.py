@@ -56,7 +56,7 @@ class Ledger(object):
         header = ' | '.join(
             [' ' * 14] + ['{:13s}'.format(name) for name in self._all_players]
         )
-        lines = ['', header]
+        lines = [header]
 
         # Add line for each game card, with an entry for each player
         divider = '-' * (15 + 16 * len(self._all_players))
@@ -257,6 +257,7 @@ class Ledger(object):
                 self._simplify_max_no_counts(),
                 self._simplify_max_yes_counts(),
                 self._simplify_solved_categories(),
+                self._simplify_single_possibilities(),
                 self._simplify_single_shown_cards(),
                 self._simplify_sufficient_shown_cards(),
             ))
@@ -336,9 +337,9 @@ class Ledger(object):
     def _simplify_solved_categories(self) -> bool:
         """Simplifies ledger by applying a "solved category" rule for all cards.
 
-        Specifically, if we know which card in a category (suspects, weapons,
-        or rooms) is part of the solution, and any of the other cards in that
-        category can only be held by one player, mark those entries as YES.
+        Specifically, if we know which card in a category (suspects, weapons, or
+        rooms) is part of the solution, and any of the other cards in that
+        category can only be held by one player, marks those entries as YES.
 
         Returns True if the ledger changes as a result of applying this rule, or
         False if the ledger is unchanged.
@@ -352,7 +353,7 @@ class Ledger(object):
         """Simplifies ledger by applying a "solved category" rule for category.
 
         Specifically, if we know a card in category is part of the solution, and
-        any of the other cards in category can only be held by one player, mark
+        any of the other cards in category can only be held by one player, marks
         the corresponding entries as YES.
 
         Returns True if the ledger changes as a result of applying this rule, or
@@ -395,11 +396,41 @@ class Ledger(object):
 
         return did_change
 
+    def _simplify_single_possibilities(self) -> bool:
+        """Simplifies ledger by applying a "1 possibility" rule for all cards.
+
+        Specifically, if we know all cards in a category (suspects, weapons, or
+        rooms) except for one are held by other players, marks the remaining
+        card as not held by any player, since it must be part of the solution.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+        did_change = False
+        for category in (SUSPECTS, WEAPONS, ROOMS):
+            did_change = self._simplify_single_possible(category) or did_change
+        return did_change
+
+    def _simplify_single_possible(self, category: Iterable[Card]) -> bool:
+        """Simplifies ledger by applying a "1 possibility" rule for category.
+
+        Specifically, if we know all cards in category except for one are held
+        by other players, marks the remaining card as not held by any player.
+
+        Returns True if the ledger changes as a result of applying this rule, or
+        False if the ledger is unchanged.
+        """
+        did_change = False
+        possible_cards = self._find_possible_cards(category)
+        if len(possible_cards) == 1:
+            did_change = self._fill_row(possible_cards[0], self.NO)
+        return did_change
+
     def _simplify_single_shown_cards(self) -> bool:
         """Simplifies ledger by applying a "1 shown card" rule for each player.
 
         Specifically, if there is only one possible card left for a suggestion
-        that a player has disproved, then mark that player as having the card.
+        that a player has disproved, marks that player as having the card.
 
         Returns True if the ledger changes as a result of applying this rule, or
         False if the ledger is unchanged.
@@ -418,7 +449,7 @@ class Ledger(object):
 
         Specifically, for each player that has a sufficient spread of possible
         shown cards from suggestions they have disproved to account for all
-        cards in their hand, mark all other cards as NO.
+        cards in their hand, marks all other cards as NO.
 
         Returns True if the ledger changes as a result of applying this rule, or
         False if the ledger is unchanged.

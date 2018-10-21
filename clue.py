@@ -47,6 +47,7 @@ def main() -> None:
     # Main game loop
     while True:
         # Display the current game info
+        print()
         for info in (shown_cards, skipped_cards, suggestions, ledger):
             print(info)
             print()
