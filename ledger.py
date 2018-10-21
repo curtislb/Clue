@@ -63,7 +63,7 @@ class Ledger(object):
         for category in (SUSPECTS, WEAPONS, ROOMS):
             lines.append(divider)
             for card in category:
-                row_label = '{:14s}'.format(card.name)
+                row_label = self._format_card(card)
                 lines.append(' | '.join(
                     [row_label]
                     + [self._format_entry(entry) for entry in self._sheet[card]]
@@ -110,6 +110,16 @@ class Ledger(object):
 
         # Make any deductions based on new info
         self._simplify()
+
+    def _format_card(self, card: Card) -> str:
+        """Converts a card into a string that can be used as a row label."""
+        if self._is_solution(card):
+            card_str = '*{}*'.format(card.name)
+        elif not self._is_possible(card):
+            card_str = '-{}-'.format(card.name)
+        else:
+            card_str = card.name
+        return '{:14s}'.format(card_str)
 
     @classmethod
     def _format_entry(cls, entry: Set[int]) -> str:
