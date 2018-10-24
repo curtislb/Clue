@@ -40,15 +40,15 @@ def main() -> None:
     # Set up the ledger and card/suggestion trackers
     all_players = [player] + opponents
     ledger = Ledger(all_players, hand_sizes, player, own_cards)
+    suggestions = SuggestionTracker()
     shown_cards = ShownCardTracker(opponents)
     skipped_cards = SkippedCardTracker()
-    suggestions = SuggestionTracker(all_players)
 
     # Main game loop
     while True:
         # Display the current game info
         print()
-        for info in (shown_cards, skipped_cards, suggestions, ledger):
+        for info in (suggestions, shown_cards, skipped_cards, ledger):
             print(info)
             print()
 
@@ -86,9 +86,8 @@ def process_input(
     """Updates the current known game state based on user input."""
 
     # Prompt user to enter relevant info for each suggestion
-    suggesting_prefix, *suggested_card_prefixes = (
-        input('Enter suggestion: ').strip().split()
-    )
+    suggesting_prefix = input('Enter suggesting player: ').strip()
+    suggested_card_prefixes = input('Enter suggested cards: ').strip().split()
     passing_prefixes = input('Enter players passing: ').strip().split()
     showing_prefix = input('Enter player showing: ').strip()
 
@@ -115,7 +114,12 @@ def process_input(
 
     # Update ledger and suggestion/card trackers
     ledger.update(suggested_cards, passing_players, showing_player, shown_card)
-    suggestions.update(suggesting_player, suggested_cards, showing_player)
+    suggestions.update(
+        suggesting_player,
+        suggested_cards,
+        passing_players,
+        showing_player
+    )
     if player in passing_players:
         skipped_cards.update(suggested_cards)
 
