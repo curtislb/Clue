@@ -32,6 +32,7 @@ class Ledger(object):
 
         # Ensure user-supplied params are logically consistent
         assert len(all_players) == len(hand_sizes)
+        assert player in all_players
         assert hand_sizes[all_players.index(player)] == len(own_cards)
 
         self._all_players = all_players
@@ -304,17 +305,14 @@ class Ledger(object):
         did_change = False
         num_cards = len(self._sheet)
         for p in range(len(self._all_players)):
-            # Count NO and YES entries in player's column
+            # Count NO entries in player's column
             no_count = 0
-            yes_count = 0
             for i in range(num_cards):
                 if self._sheet[i][p] == self.NO:
                     no_count += 1
-                elif self._sheet[i][p] == self.YES:
-                    yes_count += 1
 
             # If NO count is max possible, make all other column entries YES
-            if no_count >= num_cards - self._hand_sizes[p] + yes_count:
+            if no_count >= num_cards - self._hand_sizes[p]:
                 did_change = self._fill_column(p, self.YES) or did_change
 
         return did_change
