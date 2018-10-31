@@ -49,6 +49,8 @@ def main() -> None:
     while True:
         # Display the current game info
         print()
+        print('#' * 79)
+        print()
         for info in (suggestions, shown_cards, skipped_cards, ledger):
             print(info)
             print()
@@ -56,7 +58,9 @@ def main() -> None:
         # Check if we have a unique solution
         solution = ledger.solve()
         if solution is not None:
+            print('******************************')
             print('*** Unique solution found! ***')
+            print('******************************')
             print(', '.join(card.name for card in solution))
             print()
 
