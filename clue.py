@@ -58,10 +58,9 @@ def main() -> None:
         # Check if we have a unique solution
         solution = ledger.solve()
         if solution is not None:
-            print('******************************')
             print('*** Unique solution found! ***')
-            print('******************************')
             print(', '.join(card.name for card in solution))
+            show_continue_prompt()
             print()
 
         # noinspection PyBroadException
@@ -78,10 +77,7 @@ def main() -> None:
             print()
             print('Whoops! Something went wrong...')
             traceback.print_exc()
-            print()
-            response = input('Continue playing? [Y/n] ')
-            if prefix.is_match('n', response):
-                sys.exit(1)
+            show_continue_prompt(1)
 
 
 def process_input(
@@ -131,6 +127,14 @@ def process_input(
     )
     if player in passing_players:
         skipped_cards.update(suggested_cards)
+
+
+def show_continue_prompt(exit_status: int = 0) -> None:
+    """Prompt the user to continue playing or exit with a given status code."""
+    print()
+    response = input('Continue playing? [Y/n] ')
+    if prefix.is_match('n', response):
+        sys.exit(exit_status)
 
 
 if __name__ == '__main__':
