@@ -8,6 +8,7 @@ cards held by all players as suggestions/accusations are made and disproved.
 
 __author__ = 'Curtis Belmonte'
 
+import sys
 import traceback
 from typing import List, Optional
 
@@ -56,7 +57,7 @@ def main() -> None:
         solution = ledger.solve()
         if solution is not None:
             print('*** Unique solution found! ***')
-            print(', '.join([card.name for card in solution]))
+            print(', '.join(card.name for card in solution))
             print()
 
         # noinspection PyBroadException
@@ -73,6 +74,10 @@ def main() -> None:
             print()
             print('Whoops! Something went wrong...')
             traceback.print_exc()
+            print()
+            response = input('Continue playing? [Y/n] ')
+            if prefix.is_match('n', response):
+                sys.exit(1)
 
 
 def process_input(

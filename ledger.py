@@ -130,7 +130,7 @@ class Ledger(object):
         elif entry == cls.NO:
             entry_str = 'NO'
         else:
-            entry_str = ' '.join([str(n) for n in entry])
+            entry_str = ' '.join(str(n) for n in entry)
         return '{:13s}'.format(entry_str)
 
     def _mark(self, card: Card, player_index: int, value: Set[int]) -> None:

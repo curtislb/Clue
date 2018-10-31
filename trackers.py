@@ -95,8 +95,13 @@ class SuggestionTracker(object):
     @staticmethod
     def _format_info(info: 'SuggestionTracker.Info') -> str:
         cards, passing_players, showing_player = info
-        return '    {} -> [{}] -> {}'.format(
-            ', '.join(card.name for card in cards),
-            ', '.join(passing_players),
-            showing_player
-        )
+        cards_str = ', '.join(card.name for card in sorted(cards))
+        if not passing_players:
+            info_str = '    {} -> {}'.format(cards_str, showing_player)
+        else:
+            info_str = '    {} -> [{}] -> {}'.format(
+                cards_str,
+                ', '.join(passing_players),
+                showing_player
+            )
+        return info_str
