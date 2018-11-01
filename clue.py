@@ -46,6 +46,7 @@ def main() -> None:
     skipped_cards = SkippedCardTracker()
 
     # Main game loop
+    did_solve = False
     while True:
         # Display the current game info
         print()
@@ -60,7 +61,9 @@ def main() -> None:
         if solution is not None:
             print('*** Unique solution found! ***')
             print(', '.join(card.name for card in solution))
-            show_continue_prompt()
+            if not did_solve:
+                show_continue_prompt()
+                did_solve = True
             print()
 
         # noinspection PyBroadException

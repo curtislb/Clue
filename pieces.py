@@ -15,6 +15,7 @@ import prefix
 
 class Card(IntEnum):
     """Game card that either is held by a player or is part of the solution."""
+
     GREEN = 0
     MUSTARD = 1
     ORCHID = 2

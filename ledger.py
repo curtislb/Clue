@@ -29,7 +29,6 @@ class Ledger(object):
         player: str,
         own_cards: List[Card]
     ) -> None:
-
         # Ensure user-supplied params are logically consistent
         assert len(all_players) == len(hand_sizes)
         assert player in all_players
@@ -52,6 +51,9 @@ class Ledger(object):
                 ]
             else:
                 self._sheet[card][player_index] = self.NO
+
+        # Check if any deductions can already be made
+        self._simplify()
 
     def __repr__(self) -> str:
         header = ' | '.join(
