@@ -21,7 +21,7 @@ from trackers import ShownCardTracker, SkippedCardTracker, SuggestionTracker
 def main() -> None:
     # Prompt user for initial game info, including players and cards
     player = input('Enter your name: ').strip()
-    opponents = input('Enter opponents: ').strip().split()
+    opponents = input('Enter opponents (in order): ').strip().split()
     own_cards = [
         Card.parse(s) for s in input('Enter your cards: ').strip().split()
     ]
@@ -96,18 +96,22 @@ def process_input(
     # Prompt user to enter relevant info for each suggestion
     suggesting_prefix = input('Enter suggesting player: ').strip()
     suggested_card_prefixes = input('Enter suggested cards: ').strip().split()
-    passing_prefixes = input('Enter players passing: ').strip().split()
     showing_prefix = input('Enter player showing: ').strip()
+    assert len(suggested_card_prefixes) == 3, 'Suggestions involve 3 cards'
 
     # Map prefixes to actual players/cards
     suggesting_player = prefix.find_match(suggesting_prefix, all_players)
     suggested_cards = [Card.parse(name) for name in suggested_card_prefixes]
-    passing_players = [
-        prefix.find_match(name, all_players) for name in passing_prefixes
-    ]
     showing_player = (
         None if showing_prefix == '' else
         prefix.find_match(showing_prefix, all_players)
+    )
+
+    # Get passing players based on suggesting and showing players
+    passing_players = find_passing_players(
+        all_players,
+        suggesting_player,
+        showing_player
     )
 
     # Handle cases where user is directly involved in suggestion
@@ -130,6 +134,27 @@ def process_input(
     )
     if player in passing_players:
         skipped_cards.update(suggested_cards)
+
+
+def find_passing_players(
+    all_players: List[str],
+    suggesting_player: str,
+    showing_player: Optional[str]
+) -> List[str]:
+    """Returns a list of all players who failed to disprove a suggestion.
+
+    all_players: Turn-ordered list of the names of all players in the game
+    suggesting_player: Name of player making suggestion. Must be in all_players
+    showing_player: Name of player disproving suggestion. Can be None
+    """
+    passing_players: List[str] = []
+    player_count = len(all_players)
+    suggesting_index = all_players.index(suggesting_player)
+    i = (suggesting_index + 1) % player_count
+    while all_players[i] != showing_player and i != suggesting_index:
+        passing_players.append(all_players[i])
+        i = (i + 1) % player_count
+    return passing_players
 
 
 def show_continue_prompt(exit_status: int = 0) -> None:

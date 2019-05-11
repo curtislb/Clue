@@ -20,4 +20,5 @@ def find_match(prefix: str, values: Iterable[str]) -> str:
 
 def is_match(prefix: str, value: str) -> bool:
     """Checks if value has the given case-insensitive prefix."""
+    assert prefix != '', 'Cannot match with empty prefix'
     return value.lower().startswith(prefix.lower())
